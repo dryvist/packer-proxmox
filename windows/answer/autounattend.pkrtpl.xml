@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Build-time answer file. Packer renders this into an ISO via cd_content and
+  attaches it, so nothing is staged on a hypervisor by hand.
+
+  This is the only answer file. The template is not sysprep-generalized, so a
+  clone never runs an OOBE pass and nothing would read a second one; everything
+  a clone needs - the Administrator password, WinRM and RDP - is configured here
+  and captured into the image as-is.
+
+  The autologon is consumed during the build (LogonCount 1), so a clone comes up
+  at the login screen rather than logging itself in.
+
+  The xmlns:wcm declaration is load-bearing: wcm:action appears throughout, and
+  without the namespace Windows Setup rejects the whole file and silently drops
+  to an interactive prompt with no error anywhere but the VM console.
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>en-US</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>en-US</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+    <!--
+      The boot disk sits behind a virtio-scsi-pci controller, so windowsPE sees
+      no disk at all until vioscsi loads, and setup halts at "Select location to
+      install Windows" with an empty disk list. Attaching virtio-win.iso is
+      necessary but not sufficient.
+
+      DriverPaths belongs to PnpCustomizationsWinPE, NOT to Microsoft-Windows-
+      Setup. It was under Setup here and the drivers silently never loaded -
+      Setup honoured every other element of that component (it skipped language,
+      EULA and edition selection) and simply ignored this one, so the failure
+      looked like a hang rather than a rejected answer file. Confirmed from the
+      console: the empty-disk screen, 715 MiB read and zero bytes written.
+
+      Every drive letter is listed because windowsPE assigns them unpredictably
+      with several discs attached.
+    -->
+    <component name="Microsoft-Windows-PnpCustomizationsWinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <DriverPaths>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="1">
+          <Path>D:\${vioscsi_path}</Path>
+        </PathAndCredentials>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="2">
+          <Path>E:\${vioscsi_path}</Path>
+        </PathAndCredentials>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="3">
+          <Path>F:\${vioscsi_path}</Path>
+        </PathAndCredentials>
+        <PathAndCredentials wcm:action="add" wcm:keyValue="4">
+          <Path>G:\${vioscsi_path}</Path>
+        </PathAndCredentials>
+      </DriverPaths>
+    </component>
+    <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <DiskConfiguration>
+        <Disk wcm:action="add">
+          <CreatePartitions>
+            <CreatePartition wcm:action="add">
+              <Order>1</Order>
+              <Type>EFI</Type>
+              <Size>260</Size>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>2</Order>
+              <Type>MSR</Type>
+              <Size>16</Size>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>3</Order>
+              <Type>Primary</Type>
+              <Extend>true</Extend>
+            </CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add">
+              <Order>1</Order>
+              <PartitionID>1</PartitionID>
+              <Label>System</Label>
+              <Format>FAT32</Format>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>2</Order>
+              <PartitionID>2</PartitionID>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>3</Order>
+              <PartitionID>3</PartitionID>
+              <Label>Windows</Label>
+              <Letter>C</Letter>
+              <Format>NTFS</Format>
+            </ModifyPartition>
+          </ModifyPartitions>
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+        </Disk>
+      </DiskConfiguration>
+      <ImageInstall>
+        <OSImage>
+          <InstallFrom>
+            <MetaData wcm:action="add">
+              <Key>/IMAGE/INDEX</Key>
+              <Value>${wim_index}</Value>
+            </MetaData>
+          </InstallFrom>
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>3</PartitionID>
+          </InstallTo>
+        </OSImage>
+      </ImageInstall>
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <ProductKey>
+          <Key></Key>
+          <WillShowUI>Never</WillShowUI>
+        </ProductKey>
+      </UserData>
+    </component>
+  </settings>
+
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <ComputerName>${computer_name}</ComputerName>
+    </component>
+    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>reg add HKLM\SYSTEM\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Path>reg add HKLM\SYSTEM\Setup\OOBE /v BypassNRO /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <!--
+          Windows 11 24H2 turns on automatic device encryption during OOBE
+          whenever a TPM is present, and this template always presents one. An
+          encrypted OS volume makes sysprep /generalize fail outright with
+          0x80310039 ("BitLocker is on for the OS volume"), which loses the
+          build at its very last step after a full install has already run.
+
+          Must be set in specialize: OOBE is where the encryption decision is
+          made, so anything later is too late. A template is a base image, not
+          a fleet policy - real disk encryption belongs on the deployed clone,
+          applied by configuration management, not baked into the golden image
+          where every clone would inherit the same recovery key.
+        -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>3</Order>
+          <Path>reg add HKLM\SYSTEM\CurrentControlSet\Control\BitLocker /v PreventDeviceEncryption /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+    </component>
+  </settings>
+
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <NetworkLocation>Work</NetworkLocation>
+        <ProtectYourPC>3</ProtectYourPC>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <SkipUserOOBE>true</SkipUserOOBE>
+      </OOBE>
+      <UserAccounts>
+        <AdministratorPassword>
+          <Value>${admin_password}</Value>
+          <PlainText>true</PlainText>
+        </AdministratorPassword>
+      </UserAccounts>
+      <AutoLogon>
+        <Password>
+          <Value>${admin_password}</Value>
+          <PlainText>true</PlainText>
+        </Password>
+        <Enabled>true</Enabled>
+        <LogonCount>1</LogonCount>
+        <Username>Administrator</Username>
+      </AutoLogon>
+      <FirstLogonCommands>
+        <!--
+          Must run first: installs the remaining virtio drivers (NetKVM, without
+          which the NIC never comes up and Packer's WinRM connection never
+          succeeds) plus qemu-guest-agent, which Terraform's 15-minute agent
+          timeout depends on. The disc letter is discovered, not assumed.
+        -->
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <CommandLine>cmd /c for %i in (D E F G) do @if exist %i:\virtio-win-guest-tools.exe %i:\virtio-win-guest-tools.exe /install /quiet /norestart</CommandLine>
+        </SynchronousCommand>
+        <!--
+          Must precede winrm quickconfig, which refuses outright on a Public
+          network. Windows classifies an unidentified network as Public, and the
+          built-in WinRM rule for that profile is scoped to LocalSubnet, so the
+          listener comes up and every connection from another subnet is dropped
+          - Packer waits out its whole timeout against a guest that is up,
+          networked and answering the guest agent. The identically-named
+          "-NoScope" rule accepts any remote address but only applies to the
+          Domain and Private profiles, so making the profile Private is what
+          activates it. Retried because at first logon NetKVM may not have
+          finished bringing the NIC up, and there is no profile to set yet.
+        -->
+        <SynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <CommandLine>powershell.exe -NoProfile -Command "1..30 | ForEach-Object { $prof = Get-NetConnectionProfile -ErrorAction SilentlyContinue; if ($prof) { $prof | Set-NetConnectionProfile -NetworkCategory Private; break }; Start-Sleep -Seconds 2 }"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>3</Order>
+          <CommandLine>cmd /c winrm quickconfig -quiet</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>4</Order>
+          <CommandLine>cmd /c winrm set winrm/config/service/auth @{Basic="true"}</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>5</Order>
+          <CommandLine>cmd /c winrm set winrm/config/service @{AllowUnencrypted="true"}</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>6</Order>
+          <CommandLine>cmd /c netsh advfirewall firewall set rule group="Windows Remote Management" new enable=yes</CommandLine>
+        </SynchronousCommand>
+        <!--
+          RDP is enabled here, in the image itself, rather than at a clone's
+          first boot. The template is deliberately NOT sysprep-generalized, so
+          there is no OOBE pass on a clone and nothing would ever run a
+          post-deployment answer file. A clone boots straight to the login
+          screen of an already-configured Windows, with RDP listening.
+        -->
+        <SynchronousCommand wcm:action="add">
+          <Order>7</Order>
+          <CommandLine>cmd /c reg add "HKLM\System\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>8</Order>
+          <CommandLine>cmd /c netsh advfirewall firewall set rule group="remote desktop" new enable=yes</CommandLine>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+    </component>
+  </settings>
+
+</unattend>

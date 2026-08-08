@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  packer:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [windows, splunk]
+    env:
+      # Placeholders. `packer validate` is a schema check and never contacts the
+      # API, so CI needs no real credentials -- verified against an unreachable
+      # host. The plugin reads these three on its own; nothing is declared in HCL.
+      PROXMOX_URL: https://placeholder.invalid:8006/api2/json
+      PROXMOX_USERNAME: placeholder@pve!ci
+      PROXMOX_TOKEN: 00000000-0000-0000-0000-000000000000
+      PKR_VAR_proxmox_node: placeholder-node
+      PKR_VAR_WINDOWS_ADMIN_PASSWORD: placeholder-password
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-packer@main
+        with:
+          version: latest
+
+      - name: packer init
+        run: packer init .
+        working-directory: ${{ matrix.config }}
+
+      - name: packer fmt -check
+        run: packer fmt -check -diff .
+        working-directory: ${{ matrix.config }}
+
+      # Only sources referenced by a `build` block are checked, so an orphaned
+      # source would pass silently. Keep every source wired into a build.
+      - name: packer validate
+        run: packer validate .
+        working-directory: ${{ matrix.config }}

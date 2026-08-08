@@ -1,0 +1,3 @@
+.direnv/
+packer_cache/
+crash.log
