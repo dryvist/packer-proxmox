@@ -38,6 +38,12 @@ variable "bridge" {
   default     = "vmbr0"
 }
 
+variable "ssh_private_key_file" {
+  type        = string
+  description = "Private key Packer authenticates to the cloned guest with. `packer validate` stats this file, so it must exist wherever validate runs."
+  default     = "~/.ssh/id_ed25519"
+}
+
 variable "splunk_image" {
   type        = string
   description = "Splunk container image pre-pulled into the template, pinned for reproducibility"

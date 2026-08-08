@@ -39,6 +39,15 @@ jobs:
         run: packer fmt -check -diff .
         working-directory: ${{ matrix.config }}
 
+      # `packer validate` stats ssh_private_key_file, so the splunk config needs
+      # a real key present. Generate a throwaway one rather than weakening the
+      # check -- it authenticates to nothing and dies with the runner.
+      - name: Generate throwaway SSH key for validate
+        if: matrix.config == 'splunk'
+        run: |
+          ssh-keygen -t ed25519 -N '' -f "$RUNNER_TEMP/ci_ed25519" -q
+          echo "PKR_VAR_ssh_private_key_file=$RUNNER_TEMP/ci_ed25519" >> "$GITHUB_ENV"
+
       # Only sources referenced by a `build` block are checked, so an orphaned
       # source would pass silently. Keep every source wired into a build.
       - name: packer validate

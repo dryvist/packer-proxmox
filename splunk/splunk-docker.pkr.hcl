@@ -31,7 +31,7 @@ source "proxmox-clone" "splunk-docker" {
   ssh_username         = "debian"
   ssh_timeout          = "300s"
   ssh_agent_auth       = false
-  ssh_private_key_file = pathexpand("~/.ssh/id_ed25519")
+  ssh_private_key_file = pathexpand(var.ssh_private_key_file)
 
   cloud_init              = true
   cloud_init_storage_pool = var.vm_storage_pool
