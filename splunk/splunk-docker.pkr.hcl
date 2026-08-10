@@ -7,6 +7,15 @@ packer {
   }
 }
 
+locals {
+  # Explicit -var wins; otherwise use the conventional key when it is present.
+  # Empty is valid to Packer and keeps `validate` runnable without build creds.
+  ssh_private_key_file = (
+    var.ssh_private_key_file != "" ? var.ssh_private_key_file :
+    fileexists(pathexpand("~/.ssh/id_ed25519")) ? pathexpand("~/.ssh/id_ed25519") : ""
+  )
+}
+
 source "proxmox-clone" "splunk-docker" {
   # Credentials come from PROXMOX_URL, PROXMOX_USERNAME and PROXMOX_TOKEN in the
   # environment, which the plugin reads on its own.
@@ -28,10 +37,11 @@ source "proxmox-clone" "splunk-docker" {
   os              = "l26"
 
   # SSH configuration: Use the VM-specific SSH key (id_ed25519)
-  ssh_username         = "debian"
-  ssh_timeout          = "300s"
-  ssh_agent_auth       = false
-  ssh_private_key_file = pathexpand("~/.ssh/id_ed25519")
+  ssh_username   = "debian"
+  ssh_timeout    = "300s"
+  ssh_agent_auth = false
+  # Resolved in locals so `validate` never stats a path that does not exist.
+  ssh_private_key_file = local.ssh_private_key_file
 
   cloud_init              = true
   cloud_init_storage_pool = var.vm_storage_pool

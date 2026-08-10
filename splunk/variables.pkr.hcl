@@ -43,3 +43,15 @@ variable "splunk_image" {
   description = "Splunk container image pre-pulled into the template, pinned for reproducibility"
   default     = "splunk/splunk:10.0.2"
 }
+
+variable "ssh_private_key_file" {
+  type        = string
+  description = <<-EOT
+    Private key Packer uses to reach the build VM. Defaults to the usual path
+    when it exists, and to "" when it does not — `packer validate` stats this
+    file, so a hard-coded path fails anywhere the key is absent (CI) even
+    though validate needs no build credentials. A build still requires a real
+    key: set PKR_VAR_ssh_private_key_file, or -var, where the default misses.
+  EOT
+  default     = ""
+}
