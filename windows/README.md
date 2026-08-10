@@ -10,10 +10,11 @@ Windows build from also rebuilding unrelated images.
 
 ## Where to run it
 
-On a LAN host, not a macOS workstation. The builder needs the Proxmox API *and*
-a WinRM connection to the VM it is creating; macOS Local Network privacy denies
-the second, and the failure presents as a connection timeout rather than a
-permission error.
+The builder needs the Proxmox API *and* a WinRM connection to the VM it is
+creating. On macOS the WinRM connection is denied when that VM sits on a subnet
+the machine is directly attached to, and the failure presents as a connection
+timeout rather than a permission error. Build from a host that reaches the VM
+over a routed path.
 
 ## Installation
 

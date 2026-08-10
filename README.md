@@ -56,9 +56,10 @@ packer validate .
 packer build -only=proxmox-iso.win11 .
 ```
 
-Builds run on a LAN host, not a macOS workstation — macOS Local Network privacy
-denies the WinRM and SSH connections a build makes to the guest it is creating,
-and the failure looks like a connection timeout rather than a permission error.
+On macOS, a build is denied when the guest it creates sits on a subnet the
+machine is directly attached to: the WinRM and SSH connections fail, and the
+failure looks like a connection timeout rather than a permission error. Build
+from a host that reaches the guest over a routed path.
 
 Always pass `-only=` in `windows/`. Without it Packer builds all three images at
 once, and each boots a VM with the finished guest's full memory.
