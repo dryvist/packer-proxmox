@@ -57,13 +57,13 @@ OpenTofu in `tofu-proxmox`.
 direnv allow                            # packer from the nix dev shell
 cd windows
 packer init . && packer validate .
-packer build -only=proxmox-iso.win11 .  # LAN host only
+packer build -only=proxmox-iso.win11 .
 ```
 
-- Builds must run on a LAN host. macOS Local Network privacy denies the WinRM
-  and SSH connections a build makes to the guest it creates, and the failure
-  looks like a connection timeout, not a permission error. Never diagnose that
-  as an outage.
+- On macOS, a build is denied when the guest it creates sits on a subnet the
+  machine is directly attached to. The WinRM and SSH connections fail as a
+  connection timeout, not a permission error — never diagnose that as an
+  outage. Build from a host that reaches the guest over a routed path.
 - Always pass `-only=` in `windows/`. Without it all three build at once, each
   booting a VM with the finished guest's full memory.
 - Build one image at a time.
