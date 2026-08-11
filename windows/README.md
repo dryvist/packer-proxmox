@@ -39,6 +39,15 @@ credential is declared in the HCL and no `-var-file` is used:
 
 How an operator populates these is documented privately, not here.
 
+`PKR_VAR_WINDOWS_ADMIN_PASSWORD` is not a per-build value. It comes from the
+estate defaults object in the secret store, which the packer role is granted
+read on, and it is what the answer file bakes into the local Administrator
+account. Using a build-specific password instead produces a template whose
+guests can only be reached by whoever recorded that build's value — and a VDI
+guest is reached by a human at an RDP or console prompt, where copy/paste is
+not available. Ansible converges the same account toward the same default, so a
+guest built from an older template ends up matching rather than drifting.
+
 `PKR_VAR_proxmox_node` is a build parameter, not a credential — templates are
 node-local unless the storage is shared, so it must name the node the clones
 live on.
