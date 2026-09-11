@@ -1,3 +1,6 @@
+---
+skill-groups: [core, git, homelab]
+---
 # packer-proxmox — AI Agent Documentation
 
 Packer templates for the Proxmox VE homelab. This repo builds **images**;
