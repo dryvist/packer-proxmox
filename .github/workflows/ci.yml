@@ -34,6 +34,10 @@ jobs:
       - name: packer init
         run: packer init .
         working-directory: ${{ matrix.config }}
+        env:
+          # Plugin downloads hit the GitHub API; unauthenticated calls share the
+          # runner's egress IP and get rate limited (HTTP 403).
+          PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: packer fmt -check
         run: packer fmt -check -diff .
