@@ -25,9 +25,9 @@ jobs:
       PKR_VAR_proxmox_node: placeholder-node
       PKR_VAR_WINDOWS_ADMIN_PASSWORD: placeholder-password
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: hashicorp/setup-packer@main
+      - uses: hashicorp/setup-packer@97ec7008e79c4247af034e505b489f47f01173a6 # main
         with:
           version: latest
 
