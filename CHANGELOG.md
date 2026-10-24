@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/dryvist/packer-proxmox/compare/v1.0.0...v1.0.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **packer:** pin Proxmox plugin to 1.2.4 ([9f0cc61](https://github.com/dryvist/packer-proxmox/commit/9f0cc61576547554b254a75d8d52a3b72b61eda2))
+
 ## 1.0.0 (2026-10-14)
 
 
