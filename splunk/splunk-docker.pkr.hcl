@@ -1,7 +1,8 @@
 packer {
   required_plugins {
     proxmox = {
-      version = ">= 1.1.0"
+      # renovate: datasource=github-releases depName=hashicorp/packer-plugin-proxmox versioning=semver
+      version = "1.2.4"
       source  = "github.com/hashicorp/proxmox"
     }
   }
